@@ -3,7 +3,7 @@
 //  JackFastKit
 //
 //  Created by 曾 宪华 on 14-10-13.
-//  Copyright (c) 2014年 嗨，我是曾宪华(@xhzengAIB)，曾加入YY Inc.担任高级移动开发工程师，拍立秀App联合创始人，热衷于简洁、而富有理性的事物 QQ:543413507 主页:http://zengxianhua.com All rights reserved.
+//  Copyright (c) 2014年 华捷 iOS软件开发工程师 曾宪华. All rights reserved.
 //
 
 #import "PopMenu.h"
@@ -27,6 +27,8 @@
 
 @property (nonatomic, strong) MenuItem *selectedItem;
 
+@property (nonatomic, strong) UIButton *dismissButton;    //取消按钮
+
 @property (nonatomic, assign, readwrite) BOOL isShowed;
 
 @property (nonatomic, assign) CGPoint startPoint;
@@ -44,7 +46,7 @@
     if (self) {
         // Initialization code
         self.items = items;
-        
+
         [self setup];
     }
     return self;
@@ -54,7 +56,7 @@
 - (void)setup {
     self.backgroundColor = [UIColor clearColor];
     self.perRowItemCount = 3;
-    
+
     typeof(self) __weak weakSelf = self;
     _realTimeBlur = [[XHRealTimeBlur alloc] initWithFrame:self.bounds];
     _realTimeBlur.showDuration = 0.3;
@@ -63,7 +65,7 @@
         weakSelf.isShowed = YES;
         [weakSelf showButtons];
     };
-    
+
     _realTimeBlur.willDismissBlurViewCompleted = ^(void) {
         [weakSelf hidenButtons];
     };
@@ -83,8 +85,9 @@
 #pragma mark - 公开方法
 
 - (void)showMenuAtView:(UIView *)containerView {
-    CGPoint startPoint = CGPointMake(0, CGRectGetHeight(self.bounds));
-    CGPoint endPoint = startPoint;
+    //    CGPoint startPoint = CGPointMake(0, CGRectGetHeight(self.bounds));
+    CGPoint startPoint = CGPointMake(0, - MenuButtonHeight);
+    CGPoint endPoint = CGPointMake(0, CGRectGetHeight(self.bounds));
     switch (self.menuAnimationType) {
         case kPopMenuAnimationTypeNetEase:
             startPoint.x = CGRectGetMidX(self.bounds);
@@ -119,21 +122,21 @@
  */
 - (void)showButtons {
     NSArray *items = [self menuItems];
-    
+
     NSInteger perRowItemCount = self.perRowItemCount;
-    
+
     CGFloat menuButtonWidth = (CGRectGetWidth(self.bounds) - ((perRowItemCount + 1) * MenuButtonHorizontalMargin)) / perRowItemCount;
-    
+
     typeof(self) __weak weakSelf = self;
     for (int index = 0; index < items.count; index ++) {
-        
+
         MenuItem *menuItem = items[index];
         // 如果没有自定义index，就按照正常流程，从0开始
         if (menuItem.index < 0) {
             menuItem.index = index;
         }
         MenuButton *menuButton = (MenuButton *)[self viewWithTag:kMenuButtonBaseTag + index];
-        
+
         CGRect toRect = [self getFrameWithItemCount:items.count
                                     perRowItemCount:perRowItemCount
                                   perColumItemCount:items.count/perRowItemCount+(items.count%perRowItemCount>0?1:0)
@@ -143,9 +146,9 @@
                                            paddingY:MenuButtonHorizontalMargin
                                             atIndex:index
                                              onPage:0];
-        
+
         CGRect fromRect = toRect;
-        
+
         switch (self.menuAnimationType) {
             case kPopMenuAnimationTypeSina:
                 fromRect.origin.y = self.startPoint.y;
@@ -168,40 +171,49 @@
         } else {
             menuButton.frame = fromRect;
         }
-        
+
         double delayInSeconds = index * MenuButtonAnimationInterval;
-        
+
         [self initailzerAnimationWithToPostion:toRect formPostion:fromRect atView:menuButton beginTime:delayInSeconds];
     }
+
+    [self addSubview:self.dismissButton];
+    _dismissButton.hidden = NO;
+    //    CGRect dimissButtonFrame = [self getDismissButtonFrame];
+    //    CGRect dismissButtonFromFrame = dimissButtonFrame;
+    //    dismissButtonFromFrame.origin.y = 0;
+    //    [self initailzerAnimationWithToPostion:dimissButtonFrame formPostion:dismissButtonFromFrame atView:self.dismissButton beginTime:MenuButtonAnimationInterval * _items.count];
 }
 /**
  *  隐藏按钮
  */
 - (void)hidenButtons {
     NSArray *items = [self menuItems];
-    
+
     for (int index = 0; index < items.count; index ++) {
         MenuButton *menuButton = (MenuButton *)[self viewWithTag:kMenuButtonBaseTag + index];
-        
+
         CGRect fromRect = menuButton.frame;
-        
+
         CGRect toRect = fromRect;
-        
+
         switch (self.menuAnimationType) {
             case kPopMenuAnimationTypeSina:
-                toRect.origin.y = self.endPoint.y;
+                toRect.origin.y = self.startPoint.y;
                 break;
             case kPopMenuAnimationTypeNetEase:
-                toRect.origin.x = self.endPoint.x - CGRectGetMidX(menuButton.bounds);
-                toRect.origin.y = self.endPoint.y;
+                toRect.origin.x = self.startPoint.x - CGRectGetWidth(menuButton.bounds) / 2;
+                toRect.origin.y = self.startPoint.y;
                 break;
             default:
                 break;
         }
         double delayInSeconds = (items.count - index) * MenuButtonAnimationInterval;
-        
+
         [self initailzerAnimationWithToPostion:toRect formPostion:fromRect atView:menuButton beginTime:delayInSeconds];
     }
+
+    self.dismissButton.hidden = YES;
 }
 
 - (NSArray *)menuItems {
@@ -231,15 +243,26 @@
                        paddingY:(CGFloat)paddingY
                         atIndex:(NSInteger)index
                          onPage:(NSInteger)page {
-    
+
     NSUInteger rowCount = itemCount / perRowItemCount + (itemCount % perColumItemCount > 0 ? 1 : 0);
     CGFloat insetY = (CGRectGetHeight(self.bounds) - (itemHeight + paddingY) * rowCount) / 2.0;
-    
+
     CGFloat originX = (index % perRowItemCount) * (itemWidth + paddingX) + paddingX + (page * CGRectGetWidth(self.bounds));
     CGFloat originY = ((index / perRowItemCount) - perColumItemCount * page) * (itemHeight + paddingY) + paddingY;
-    
+
     CGRect itemFrame = CGRectMake(originX, originY + insetY, itemWidth, itemHeight);
     return itemFrame;
+}
+
+/**
+ *  获取关闭按钮的位置
+ *
+ *  @return
+ */
+- (CGRect)getDismissButtonFrame {
+    CGFloat originY = CGRectGetHeight(self.bounds) - 80 - 20;
+    CGFloat originX = CGRectGetMidX(self.bounds) - 20;
+    return CGRectMake(originX, originY, 40, 40);
 }
 
 #pragma mark - Animation
@@ -251,13 +274,29 @@
     springAnimation.beginTime = beginTime + CACurrentMediaTime();
     CGFloat springBounciness = 10 - beginTime * 2;
     springAnimation.springBounciness = springBounciness;    // value between 0-20
-    
+
     CGFloat springSpeed = 12 - beginTime * 2;
     springAnimation.springSpeed = springSpeed;     // value between 0-20
     springAnimation.toValue = [NSValue valueWithCGRect:toRect];
     springAnimation.fromValue = [NSValue valueWithCGRect:fromRect];
-    
+
     [view pop_addAnimation:springAnimation forKey:@"POPSpringAnimationKey"];
+}
+
+#pragma mark - Getter
+- (UIButton *)dismissButton {
+    if (!_dismissButton) {
+        _dismissButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_dismissButton setImage:[UIImage imageNamed:@"iconClose"] forState:UIControlStateNormal];
+        [_dismissButton setBackgroundColor:[UIColor colorWithWhite:0 alpha:0.5]];
+        _dismissButton.layer.cornerRadius = 20;
+        _dismissButton.clipsToBounds = YES;
+        _dismissButton.tintColor = [UIColor whiteColor];
+        [_dismissButton addTarget:self action:@selector(dismissMenu) forControlEvents:UIControlEventTouchUpInside];
+        CGRect frame = [self getDismissButtonFrame];
+        _dismissButton.frame = frame;
+    }
+    return _dismissButton;
 }
 
 @end
