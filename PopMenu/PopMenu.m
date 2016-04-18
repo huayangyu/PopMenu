@@ -61,6 +61,7 @@
     _realTimeBlur = [[XHRealTimeBlur alloc] initWithFrame:self.bounds];
     _realTimeBlur.showDuration = 0.3;
     _realTimeBlur.disMissDuration = 0.5;
+    _realTimeBlur.userInteractionEnabled = NO;
     _realTimeBlur.willShowBlurViewcomplted = ^(void) {
         weakSelf.isShowed = YES;
         [weakSelf showButtons];
